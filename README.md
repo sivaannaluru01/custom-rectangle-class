@@ -1,0 +1,1 @@
+"# custom-rectangle-class" 
