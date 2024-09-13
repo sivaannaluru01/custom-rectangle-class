@@ -1,34 +1,54 @@
-name: Django CI
+const EventEmitter = require('events');
+const { Worker, isMainThread, parentPort } = require('worker_threads');
 
-on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+// Define the event emitter
+class UserEmitter extends EventEmitter {}
+const userEmitter = new UserEmitter();
 
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+let inTransaction = false;
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.10'  # Set this to your desired Python version
+// Signal handler to demonstrate behavior
+userEmitter.on('userSaved', (user) => {
+    console.log(`Signal handler started for user ${user.username}`);
+    console.log(`Signal handler thread ID: ${process.pid}`);
+    
+    if (inTransaction) {
+        console.log("Signal handler is in the same transaction.");
+    } else {
+        console.log("Signal handler is not in the same transaction.");
+    }
+    
+    // Simulate long-running task
+    setTimeout(() => {
+        console.log("Signal handler finished.");
+    }, 3000);
+    
+    // Simulate threading behavior
+    if (isMainThread) {
+        const worker = new Worker(__filename);
+        worker.postMessage('start');
+    }
+});
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
+// Main function to test synchronous vs. asynchronous execution and threading
+function testEventHandling() {
+    console.log(`Main thread ID: ${process.pid}`);
+    
+    inTransaction = true;
+    console.log("Creating user inside transaction...");
+    userEmitter.emit('userSaved', { username: 'test_user' });
+    
+    // Simulate transaction rollback
+    console.log("Simulating transaction rollback.");
+    inTransaction = false;
+}
 
-    - name: Run migrations
-      run: |
-        python manage.py migrate
-
-    - name: Run tests
-      run: |
-        python manage.py test
+if (isMainThread) {
+    testEventHandling();
+} else {
+    parentPort.on('message', (msg) => {
+        if (msg === 'start') {
+            console.log(`Worker thread ID: ${process.pid}`);
+        }
+    });
+}
