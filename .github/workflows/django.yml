@@ -10,10 +10,16 @@ from django.core.management.base import BaseCommand
 def handle_user_save(sender, instance, created, **kwargs):
     print(f"Signal handler started for user {instance.username}")
     print(f"Signal handler thread ID: {threading.get_ident()}")
-    
+
     # Simulating a long-running task to prove synchronous execution
     time.sleep(3)
-    print("Signal handler finished. Signal executed synchronously.")
+    print("Signal handler finished.")
+
+    # Check if the signal is within a transaction
+    if transaction.get_connection().in_atomic_block:
+        print("Signal handler is in the same transaction.")
+    else:
+        print("Signal handler is not in the same transaction.")
 
 # Main function to test the behavior
 def test_signal_behavior():
