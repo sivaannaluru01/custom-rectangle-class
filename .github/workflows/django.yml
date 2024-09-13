@@ -7,7 +7,6 @@ from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand
 
 # Signal handler to demonstrate behavior
-@receiver(post_save, sender=User)
 def handle_user_save(sender, instance, created, **kwargs):
     print(f"Signal handler started for user {instance.username}")
     print(f"Signal handler thread ID: {threading.get_ident()}")
@@ -35,4 +34,3 @@ class Command(BaseCommand):
 
     def handle(self, *args, **kwargs):
         test_signal_behavior()
-
