@@ -1,0 +1,38 @@
+import threading
+import time
+from django.db import transaction
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from django.contrib.auth.models import User
+from django.core.management.base import BaseCommand
+
+# Signal handler to demonstrate behavior
+@receiver(post_save, sender=User)
+def handle_user_save(sender, instance, created, **kwargs):
+    print(f"Signal handler started for user {instance.username}")
+    print(f"Signal handler thread ID: {threading.get_ident()}")
+    
+    # Simulating a long-running task to prove synchronous execution
+    time.sleep(3)
+    print("Signal handler finished. Signal executed synchronously.")
+
+# Main function to test the behavior
+def test_signal_behavior():
+    print(f"Main thread ID: {threading.get_ident()}")
+
+    try:
+        with transaction.atomic():
+            print("Creating user inside transaction...")
+            user = User.objects.create(username='test_user')
+            print("User created, now raising an exception to simulate rollback.")
+            raise Exception("Simulated transaction error")
+    except Exception as e:
+        print(f"Transaction rolled back: {e}")
+
+# Custom Django management command to run the test
+class Command(BaseCommand):
+    help = 'Run the signal behavior test'
+
+    def handle(self, *args, **kwargs):
+        test_signal_behavior()
+
